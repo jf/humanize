@@ -1,4 +1,4 @@
-{:deps  {org.clojure/clojure               {:mvn/version "1.11.4"}
+{:deps  {org.clojure/clojure               {:mvn/version "1.12.4"}
          com.widdindustries/cljc.java-time {:mvn/version "0.1.21"}}
  :paths ["src"]
 
@@ -16,8 +16,8 @@
               :extra-deps  {olical/cljs-test-runner {:mvn/version "3.8.1"}
                             henryw374/js-joda {:mvn/version "3.2.0-0"}}
               :main-opts   ["-m" "cljs-test-runner.main"]}
-  :clj-kondo {:replace-deps {clj-kondo/clj-kondo {:mvn/version "RELEASE"}}
+  :clj-kondo {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2026.01.19"}}
               :main-opts    ["-m" "clj-kondo.main"]}
   :build     {:deps       {io.github.hlship/build-tools
-                           {:git/tag "0.10.2" :git/sha "3c446e4"}}
+                           {:git/tag "0.12.1" :git/sha "05f3aeb"}}
               :ns-default build}}}

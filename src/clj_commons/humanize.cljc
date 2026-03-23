@@ -373,7 +373,7 @@
   Each term is a tuple of count and period name, e.g., `[5 \"second\"]`.
 
   After seconds are accounted for, remaining milliseconds are ignored."
-  [duration-ms]
+  [duration-ms all?]
   {:pre [(<= 0 duration-ms)]}
   (loop [remainder duration-ms
          [[period-ms period-name] & more-periods] duration-periods
@@ -383,13 +383,39 @@
       terms
 
       (< remainder period-ms)
-      (recur remainder more-periods terms)
+      (recur remainder more-periods
+             (if all?
+               (conj terms nil)
+               terms))
 
       :else
       (let [period-count   (int (/ remainder period-ms))
             next-remainder (mod remainder period-ms)]
         (recur next-remainder more-periods
           (conj terms [period-count period-name]))))))
+
+(defn- default-name-format
+  [count name]
+  (str " "
+       (pluralize-noun count name)))
+
+(defn- combine-terms
+  [terms name-format number-format list-format]
+  (->> terms
+       (map (fn [[period-count period-name]]
+              (str (number-format period-count)
+                   (name-format period-count period-name))))
+       list-format))
+
+(defn- default-list-format
+  [terms]
+  (join ", " terms))
+
+(defn space-list-format
+  "Joins the strings together with a space."
+  {:added "1.2"}
+  [strings]
+  (join " " strings))
 
 (defn duration
   "Converts duration, in milliseconds, into a string describing it in terms
@@ -413,17 +439,61 @@
   ([duration-ms]
    (duration duration-ms nil))
   ([duration-ms options]
-   (let [terms (duration-terms duration-ms)
+   (let [terms (duration-terms duration-ms false)
          {:keys [number-format list-format short-text]
           :or   {number-format numberword
                  short-text    "less than a second"
-                 ;; This default, instead of oxford, because the entire string is a single "value"
-                 list-format   #(join ", " %)}} options]
+                 list-format   default-list-format}} options]
      (if (seq terms)
-       (->> terms
-         (map (fn [[period-count period-name]]
-                (str (number-format period-count)
-                     " "
-                     (pluralize-noun period-count period-name))))
-         list-format)
+       (combine-terms terms default-name-format number-format list-format)
        short-text))))
+
+(defn relative-datetime
+  "Given a LocalDate or LocalDateTime, returns a human friendly expression
+  of the span of time between now and that time (in the future or past).
+  This acts like a mix of `datetime` and `duration`.
+  
+  Options:
+  
+  :brief? - if true, then only the first character of each period is used, and the number format is forced
+  to `str`; e.g. \"2h, 15m ago\"
+  :now-dt - overrides check for current time (used mostly for testing)
+  :max-terms - maximum consecutive terms to use
+  :number-format - used to convert period counts to a string; overridden to `str` if `brief?`
+  :list-format - function used to combine strings; default is to separate by commas
+  :short-text - text to use when gap is less than a second, defaults to \"a moment\"
+  :prefix - prefix text used when then is in the future, defaults to \"in\"
+  :suffix - suffix text used when then is in the past, defaults to \"ago\""
+  {:added "1.2"}
+  [then-dt & {:keys [now-dt suffix prefix number-format max-terms short-text list-format brief?]
+              :or   {now-dt        (jt.ldt/now)
+                     max-terms     2
+                     number-format numberword
+                     list-format   default-list-format
+                     short-text    "a moment"
+                     suffix        "ago"
+                     prefix        "in"}}]
+  (let [then-dt      (coerce-to-local-date-time then-dt)
+        now-dt       (coerce-to-local-date-time now-dt)
+        future-time? (jt.ldt/is-after then-dt now-dt)
+        ;; get the Duration between the two times
+        time-between (-> (jt.duration/between then-dt now-dt)
+                         (jt.duration/abs))
+        delta-ms     (jt.duration/to-millis time-between)
+        terms        (->> (duration-terms delta-ms true)
+                          (drop-while nil?)
+                          (take-while some?)
+                          (take max-terms))
+        combined     (if (seq terms)
+                       (combine-terms terms
+                                      (if brief?
+                                        #(subs %2 0 1)
+                                        default-name-format)
+                                      (if brief?
+                                        str
+                                        number-format)
+                                      list-format)
+                       short-text)]
+    (if future-time?
+      (str prefix " " combined)
+      (str combined " " suffix))))

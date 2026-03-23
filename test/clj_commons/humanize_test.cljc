@@ -1,5 +1,6 @@
 (ns clj-commons.humanize-test
-  (:require #?(:clj  [clojure.test :refer [deftest testing is are]]
+  (:require #?(:clj
+               [clojure.test :refer [deftest testing is are]]
                :cljs [cljs.test :refer-macros [deftest testing is are]])
             [clj-commons.humanize :refer [intcomma ordinal intword numberword
                                           filesize truncate oxford datetime
@@ -7,6 +8,7 @@
              :as h]
             [clojure.math :as math]
             [cljc.java-time.local-date :as jt.ld]
+            [clj-commons.humanize.time-convert :refer [coerce-to-local-date-time]]
             [cljc.java-time.local-date-time :as jt.ldt]))
 
 (def ^:private expt math/pow)
@@ -279,12 +281,12 @@
 
 (deftest durations
   (testing "duration to terms"
-    (are [duration terms] (= terms (#'h/duration-terms duration))
+    (are [duration terms] (= terms (#'h/duration-terms duration false))
                           ;; Less than a second is ignored
                           0 []
                           999 []
                           1000 [[1 "second"]]
-                          ;; Remaining milliseconds after seconds are gnored
+      ;; Remaining milliseconds after seconds are ignored
                           1500 [[1 "second"]]
                           ;; 0 periods are excluded
                           10805000 [[3 "hour"]
@@ -301,3 +303,36 @@
                                10805000 {:number-format str} "3 hours, 5 seconds"
                                510805000 {:number-format str
                                           :list-format   oxford} "5 days, 21 hours, 53 minutes, and 25 seconds")))
+
+(deftest relative-datetime-test
+  (let [now  #inst "2026-03-23T19:52:36.129-00:00"
+        then #inst "2026-03-23T21:54:39.860-00:00"]
+
+    (testing "Can override current time with :now-dt"
+      (is (= (h/relative-datetime then :now-dt now)
+             (with-redefs [jt.ldt/now (constantly now)]
+               (h/relative-datetime then)))))
+
+    (testing "default format"
+      (is (= "in two hours, two minutes"
+             (h/relative-datetime then :now-dt now))))
+
+    (testing "truncates to consecutive periods"
+      (is (= "in two days"
+             (h/relative-datetime #inst "2026-03-25T19:54:36.129-00:00"
+                                  :now-dt now))))
+
+    (testing "brief mode"
+      (is (= "2h 2m ago")
+          (h/relative-datetime now :now-dt then :list-format h/space-list-format :brief? true)))
+
+    (testing "short periods use short text"
+      (is (= "a moment ago"
+             (h/relative-datetime now :now-dt now)))
+
+      (is (= "in a tick"
+             (h/relative-datetime (-> now
+                                      coerce-to-local-date-time
+                                      (jt.ldt/plus-nanos 100000))
+                                  :now-dt now
+                                  :short-text "a tick"))))))
