@@ -1,3 +1,7 @@
+## 1.2 - UNRELEASED
+
+* Added `relative-datetime`
+
 ## 1.1 - 12 Nov 2024
 
 Thanks to Sean Corfield for straightening out build and dependency issues
@@ -51,4 +55,3 @@ than or equal to 1 was considered singular.
 
 Added `clj-commons.humanize/duration` and `duration-terms` to format a duration, in
 milliseconds, as a string.
-

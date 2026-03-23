@@ -20,6 +20,7 @@ based on similar libraries in other languages
 * [pluralize-noun](#pluralize-noun)
 * [datetime](#datetime)
 * [duration](#duration)
+* [relative-datetime](#relative-datetime)
 
 ### numberword
 
@@ -232,6 +233,27 @@ user> (h/duration 500)
 user> (h/duration 325100 {:number-format str})
 => "5 minutes, 25 seconds"
 
+```
+
+
+### relative-datetime
+
+Combines features of `duration` and `datetime` to describe a point in time relative to the current time.
+The result is truncated to (by default) two adjacent terms.
+
+
+```clojure
+user> (h/relative-datetime #inst "2026-03-23T19:52:36.129-00:00")
+=> "two hours, nineteen minutes ago"
+ 
+user> (h/relative-datetime #inst "2026-04-23T19:52:36.129-00:00")
+=> "in four weeks, two days"
+
+user> (h/relative-datetime #inst "2026-03-20T19:52:36.129-00:00" :brief? true :list-format h/space-list-format)
+=> "3d 2h ago"
+
+user> (h/relative-datetime #inst "2026-03-20T19:52:36.129-00:00" :max-terms 1)
+=> "three days ago"
 ```
 
 ## Linting
