@@ -264,7 +264,7 @@
     (testing "datetime handles date arguments intuitively and without being affected by the specific time now"
       (is (= "today"
              (datetime ld-now))
-          "LocalDate/now is today")
+          "today's date returns \"today\"")
       (is (= "today"
              (datetime ld-now
                        :now-dt (jt.ldt/now)))
